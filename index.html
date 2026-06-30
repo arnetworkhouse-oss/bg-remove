@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Background Remover</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Poppins', Arial, sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:linear-gradient(-45deg, #4338ca, #7c3aed, #db2777, #4338ca);
+    background-size:400% 400%;
+    animation:gradientShift 12s ease infinite;
+  }
+  @keyframes gradientShift{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+  }
+
+  .container{
+    background:#fff;
+    border-radius:18px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    max-width:620px;
+    width:100%;
+    padding:35px;
+    animation:popIn .5s ease;
+  }
+  @keyframes popIn{
+    from{ opacity:0; transform:scale(0.95) translateY(10px); }
+    to{ opacity:1; transform:scale(1) translateY(0); }
+  }
+
+  h1{
+    text-align:center;
+    font-size:30px;
+    font-weight:800;
+    margin-bottom:6px;
+    background:linear-gradient(90deg,#4338ca,#db2777);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  p.subtitle{
+    text-align:center;
+    color:#888;
+    margin-bottom:28px;
+    font-size:14px;
+  }
+
+  /* Drop zone */
+  #dropzone{
+    border:3px dashed #c7c7f5;
+    border-radius:14px;
+    padding:55px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:all .25s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  #dropzone:hover{
+    border-color:#7c3aed;
+    background:#faf9ff;
+    transform:translateY(-2px);
+  }
+  #dropzone.drag-over{
+    border-color:#db2777;
+    background:#fff5fa;
+  }
+  #dropzone i{
+    font-size:46px;
+    background:linear-gradient(135deg,#4338ca,#db2777);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    margin-bottom:14px;
+    display:inline-block;
+    animation:bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-8px); }
+  }
+  #dropzone h3{ font-size:17px; margin-bottom:6px; color:#222; }
+  #dropzone p{ color:#999; font-size:13px; margin-bottom:18px; }
+
+  button, .btn{
+    display:inline-block;
+    background:linear-gradient(90deg,#4338ca,#7c3aed);
+    color:#fff;
+    border:none;
+    padding:12px 28px;
+    border-radius:30px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    text-decoration:none;
+    transition:transform .2s ease, box-shadow .2s ease;
+    box-shadow:0 6px 16px rgba(67,56,202,0.35);
+  }
+  button:hover, .btn:hover{
+    transform:translateY(-3px);
+    box-shadow:0 10px 22px rgba(67,56,202,0.45);
+  }
+  .btn-secondary{
+    background:#fff;
+    color:#4338ca;
+    border:2px solid #4338ca;
+    box-shadow:none;
+  }
+  .btn-secondary:hover{ background:#f4f4ff; box-shadow:0 6px 14px rgba(67,56,202,0.2); }
+
+  /* Processing state */
+  #processing{ text-align:center; }
+  .scan-wrap{
+    position:relative;
+    max-width:340px;
+    margin:0 auto 22px;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+  }
+  .scan-wrap img{
+    width:100%;
+    display:block;
+  }
+  .scan-line{
+    position:absolute;
+    left:0; right:0; height:4px;
+    background:linear-gradient(90deg, transparent, #fff 20%, #db2777 50%, #fff 80%, transparent);
+    box-shadow:0 0 20px 6px rgba(219,39,119,0.7);
+    animation:scanMove 2s ease-in-out infinite;
+  }
+  @keyframes scanMove{
+    0%{ top:0%; }
+    50%{ top:100%; }
+    100%{ top:0%; }
+  }
+  .scan-overlay{
+    position:absolute; inset:0;
+    background:rgba(67,56,202,0.12);
+    animation:overlayPulse 2s ease-in-out infinite;
+  }
+  @keyframes overlayPulse{
+    0%,100%{ opacity:0.4; } 50%{ opacity:0.1; }
+  }
+
+  .spinner{
+    width:34px;
+    height:34px;
+    border:4px solid #e5e3ff;
+    border-top-color:#7c3aed;
+    border-radius:50%;
+    margin:0 auto 14px;
+    animation:spin .9s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #statusText{
+    color:#555;
+    font-size:14px;
+    font-weight:500;
+    animation:textFade 1.4s ease-in-out infinite;
+  }
+  @keyframes textFade{
+    0%,100%{ opacity:1; } 50%{ opacity:0.5; }
+  }
+
+  /* Result state */
+  .result-grid{
+    display:flex;
+    gap:18px;
+    margin-bottom:24px;
+  }
+  .result-box{ flex:1; text-align:center; }
+  .result-box p{
+    font-size:11px;
+    color:#999;
+    margin-bottom:8px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    font-weight:600;
+  }
+  .result-box img{
+    width:100%;
+    border-radius:10px;
+    box-shadow:0 8px 22px rgba(0,0,0,0.15);
+  }
+  .checker{
+    background-image:
+      linear-gradient(45deg, #ddd 25%, transparent 25%),
+      linear-gradient(-45deg, #ddd 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ddd 75%),
+      linear-gradient(-45deg, transparent 75%, #ddd 75%);
+    background-size:16px 16px;
+    background-position:0 0, 0 8px, 8px -8px, -8px 0px;
+    background-color:#fff;
+    border-radius:10px;
+  }
+  .actions{ text-align:center; }
+  .actions button, .actions a{ margin:0 6px; }
+
+  /* Error state */
+  #errorState{ text-align:center; }
+  #errorState i{ font-size:36px; color:#e11d48; margin-bottom:14px; }
+  #errorState p{ color:#666; margin-bottom:18px; }
+
+  .fade-in{ animation:popIn .4s ease; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Background Remover</h1>
+  <p class="subtitle">Upload an image and watch the magic happen ✨</p>
+
+  <!-- STATE 1: DROPZONE -->
+  <div id="idleState">
+    <div id="dropzone">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <h3>Drag & drop your image here</h3>
+      <p>or click below to browse (PNG, JPG, WEBP up to 10MB)</p>
+      <button id="browseBtn">Select Image</button>
+      <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp" class="hidden">
+    </div>
+  </div>
+
+  <!-- STATE 2: PROCESSING -->
+  <div id="processing" class="hidden fade-in">
+    <div class="scan-wrap">
+      <img id="previewImg" src="" alt="preview">
+      <div class="scan-overlay"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="spinner"></div>
+    <p id="statusText">Analyzing image structure...</p>
+  </div>
+
+  <!-- STATE 3: RESULT -->
+  <div id="resultState" class="hidden fade-in">
+    <div class="result-grid">
+      <div class="result-box">
+        <p>Original</p>
+        <img id="resultOriginal" src="">
+      </div>
+      <div class="result-box">
+        <p>Result</p>
+        <div class="checker">
+          <img id="resultProcessed" src="">
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <a id="downloadBtn" class="btn" download="result.png">Download Image</a>
+      <button id="resetBtn" class="btn-secondary">Upload Another</button>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="errorState" class="hidden fade-in">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <p id="errorMsg">Something went wrong. Please try again.</p>
+    <button id="retryBtn" class="btn-secondary">Try Again</button>
+  </div>
+</div>
+
+<script>
+// ===== set your backend URL here =====
+const API_ENDPOINT = "https://your-render-app.onrender.com/remove-bg";
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const browseBtn = document.getElementById('browseBtn');
+
+const idleState = document.getElementById('idleState');
+const processing = document.getElementById('processing');
+const resultState = document.getElementById('resultState');
+const errorState = document.getElementById('errorState');
+
+const previewImg = document.getElementById('previewImg');
+const statusText = document.getElementById('statusText');
+const resultOriginal = document.getElementById('resultOriginal');
+const resultProcessed = document.getElementById('resultProcessed');
+const downloadBtn = document.getElementById('downloadBtn');
+const resetBtn = document.getElementById('resetBtn');
+const retryBtn = document.getElementById('retryBtn');
+const errorMsg = document.getElementById('errorMsg');
+
+const statusMessages = [
+  "Analyzing image structure...",
+  "Detecting subject edges...",
+  "Removing background...",
+  "Refining final result..."
+];
+let statusInterval;
+
+function showOnly(el){
+  [idleState, processing, resultState, errorState].forEach(s => s.classList.add('hidden'));
+  el.classList.remove('hidden');
+}
+
+function handleFile(file){
+  if (!file) return;
+  if (!file.type.match(/image\/(png|jpe?g|webp)/)) {
+    showError("Please upload a PNG, JPG, or WEBP image.");
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showError("File too large. Max size is 10MB.");
+    return;
+  }
+
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  resultOriginal.src = url;
+
+  showOnly(processing);
+  let i = 0;
+  statusText.textContent = statusMessages[0];
+  statusInterval = setInterval(() => {
+    i = (i + 1) % statusMessages.length;
+    statusText.textContent = statusMessages[i];
+  }, 1300);
+
+  uploadImage(file);
+}
+
+async function uploadImage(file){
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const res = await fetch(API_ENDPOINT, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error("Server error " + res.status);
+
+    const blob = await res.blob();
+    const resultUrl = URL.createObjectURL(blob);
+
+    clearInterval(statusInterval);
+    resultProcessed.src = resultUrl;
+    downloadBtn.href = resultUrl;
+    showOnly(resultState);
+
+  } catch (err) {
+    console.error(err);
+    clearInterval(statusInterval);
+    showError("Could not reach the server. Please try again.");
+  }
+}
+
+function showError(msg){
+  errorMsg.textContent = msg;
+  showOnly(errorState);
+}
+
+function reset(){
+  fileInput.value = '';
+  showOnly(idleState);
+}
+
+browseBtn.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+['dragenter','dragover'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag-over'); })
+);
+['dragleave','drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag-over'); })
+);
+dropzone.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+
+resetBtn.addEventListener('click', reset);
+retryBtn.addEventListener('click', reset);
+</script>
+</body>
+</html>
