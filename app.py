@@ -2,7 +2,7 @@ import io
 import os
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
-from rembg import remove
+from rembg import remove, new_session
 from PIL import Image
 
 app = Flask(__name__)
@@ -12,6 +12,9 @@ MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 ALLOWED_MIME_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+
+# u2netp = lightweight model (~5MB vs ~176MB), fits free tier RAM (512MB)
+SESSION = new_session("u2netp")
 
 
 @app.route("/", methods=["GET"])
@@ -41,7 +44,7 @@ def remove_bg():
         except Exception:
             return jsonify({"error": "Uploaded file is not a valid image."}), 400
 
-        output_bytes = remove(input_bytes)
+        output_bytes = remove(input_bytes, session=SESSION)
 
         return send_file(
             io.BytesIO(output_bytes),
